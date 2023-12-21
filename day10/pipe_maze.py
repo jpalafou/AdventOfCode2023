@@ -47,6 +47,9 @@ class Pipe:
     def __repr__(self):
         return self.s
 
+    def __eq__(self, other):
+        return self.s == other.s
+
     def is_connected(self, other, direction: str) -> bool:
         """
         args:
@@ -188,3 +191,44 @@ path = graph.dijkstra(
 )
 assert len(path) % 2 == 1  # path length should be odd
 print(f"# steps to furthest pipe: {len(path) // 2 + 1}")
+
+# how many tiles are contained by the loop?
+n_contained_tiles = 0
+for i in range(1, nrows - 1):
+    for j in range(1, ncols - 1):
+        # only points not on the loop can be contained by the loop
+        if (i, j) not in path + [Sidx]:
+            ncrosses = 0
+            left_of_ray, right_of_ray = False, False
+            idx_of_previous_path_point = None
+            # cast a ray upwards and count the number of path crossings
+            for iray in range(i - 1, -1, -1):
+                ray_point = (iray, j)
+                if ray_point in path:
+                    ray_point_idx = path.index(ray_point)
+                    # check if the current and previous ray point form a path segment
+                    if idx_of_previous_path_point is not None:
+                        if abs(ray_point_idx - idx_of_previous_path_point) not in [
+                            1,
+                            len(path) - 1,
+                        ]:
+                            # reset left and right trackers if not
+                            left_of_ray, right_of_ray = False, False
+                    idx_of_previous_path_point = ray_point_idx
+                    path_kernel = [
+                        path[(ray_point_idx - 1) % len(path)],
+                        ray_point,
+                        path[(ray_point_idx + 1) % len(path)],
+                    ]
+                    if path_kernel[0][1] < j or path_kernel[2][1] < j:
+                        left_of_ray = True
+                    if path_kernel[0][1] > j or path_kernel[2][1] > j:
+                        right_of_ray = True
+                    # track whether the path crosses the right and left of the ray
+                    if left_of_ray and right_of_ray:
+                        ncrosses += 1
+                else:
+                    left_of_ray, right_of_ray = False, False
+            if ncrosses % 2 == 1:
+                n_contained_tiles += 1
+print(f"# tiles enclosed by path: {n_contained_tiles}")
