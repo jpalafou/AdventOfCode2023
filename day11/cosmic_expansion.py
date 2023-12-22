@@ -41,12 +41,42 @@ with open("inputs.txt") as file:
                 galaxy[i, j] = nonzero
                 nonzero += 1
 
-# expand galaxy
-expanded_galaxy = galaxy_expansion(galaxy)
+# expand spaces between galaxies
+for expansion_factor in [2, 1000000]:
+    # gather coordinate pairs of galaxies
+    coord_pairs = np.vstack(np.where(galaxy != 0)).T
 
-# find sum of distances between all pairs of galaxies
-coord_pairs = np.vstack(np.where(expanded_galaxy != 0)).T
-sum_of_lengths = 0
-for (x1, y1), (x2, y2) in itertools.combinations(coord_pairs, 2):
-    sum_of_lengths += step_counter(x1, y1, x2, y2)
-print(f"Sum of distances between all pairs of galaxies: {sum_of_lengths}")
+    # identify rows and columsn which don't contain galaxies
+    empty_rows = np.where(np.all(galaxy == 0, axis=1))[0]
+    empty_cols = np.where(np.all(galaxy == 0, axis=0))[0]
+
+    # update row indices of galacy coordinate pairs while keeping track of vertical shift
+    vertical_shift = expansion_factor - 1
+    for i in range(len(empty_rows)):
+        coord_pairs[:, 0] = np.where(
+            coord_pairs[:, 0] > empty_rows[i],
+            coord_pairs[:, 0] + vertical_shift,
+            coord_pairs[:, 0],
+        )
+        empty_rows = np.where(
+            empty_rows > empty_rows[i], empty_rows + vertical_shift, empty_rows
+        )
+
+    # same as above but column indices and horizontal shift
+    horizontal_shift = expansion_factor - 1
+    for j in range(len(empty_cols)):
+        coord_pairs[:, 1] = np.where(
+            coord_pairs[:, 1] > empty_cols[j],
+            coord_pairs[:, 1] + horizontal_shift,
+            coord_pairs[:, 1],
+        )
+        empty_cols = np.where(
+            empty_cols > empty_cols[j], empty_cols + horizontal_shift, empty_cols
+        )
+
+    # compute the sum of the distances between galaxies
+    sum_of_distances = 0
+    for (x1, y1), (x2, y2) in itertools.combinations(coord_pairs, 2):
+        sum_of_distances += step_counter(x1, y1, x2, y2)
+    print(f"{expansion_factor=}")
+    print(f"\tSum of distances between all pairs of galaxies {sum_of_distances}")
