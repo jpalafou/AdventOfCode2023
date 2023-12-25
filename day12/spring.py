@@ -1,37 +1,72 @@
-import numpy as np
-import itertools
+# I had to look at other people's solutions in order to write one for Part 2.
+# I especially followed the approach of fuglede
+# (https://github.com/fuglede/adventofcode/blob/master/2023/day12/solutions.py)
 
+from functools import cache
+# import numpy as np
+import cProfile
 
-def count_contiguous_group(s: str, key: str) -> list:
+@cache
+def count_possible(record: str, groups: tuple, num_possible: int = 0) -> int:
     """
     args:
-        s       string which may contain groups of key
-        key     character which may occur
+        record          arbitrary series of ".", "#", and "?"
+        groups          number of contiguous strings of "#" to form
+        num_possible    number of configurations of the "?" characters in record which
+                        result in contiguous strings of "#" matching groups
+                        initialized as 0 and then increases recursively
     returns:
-        out     list of lengths of groups of key in s
+        num_possible
     """
-    list_of_groups = ("".join("#" if x == key else "." for x in s)).split(".")
-    out = [len(x) for x in list_of_groups if x]
-    return out
+    # print(record, groups)
+    if sum(groups) - record.count("#") > record.count("?"):
+        # invalid case
+        return num_possible
+    # scan with kernel with length of leftmost group (+1 for ".")
+    k = groups[0]
+    prev_char = None
+    for i in range(len(record) - k):
+        scan = record[i : i + k + 1]
+        ambiguous_start = prev_char is None or prev_char in ["?", "."]
+        group_can_be_formed = "." not in scan[:-1]
+        ambiguous_end = scan[-1] in ["?", "."]
+        if ambiguous_start and group_can_be_formed and ambiguous_end:
+            shorter_record = record[i + k + 1 :]
+            if len(groups) > 1:
+                # if the leftmost group could be formed, try forming subsequent groups
+                num_possible = count_possible(shorter_record, groups[1:], num_possible)
+            else:
+                # no subseqeuent groups, so this must be a possible configuration
+                # print("\t", scan)
+                if "#" not in shorter_record:
+                    num_possible += 1
+        if scan[0] == "#":
+            # starting with a # implies this group cannot be any further
+            break
+    return num_possible
 
 
-sum_of_counts_of_arragnements = 0
-with open("inputs.txt") as file:
-    for line in file:
-        record, groups_str = line.strip().split(" ")
-        groups = [int(i) for i in groups_str.split(",")]
-        unknown_pos = [i for i, c in enumerate(record) if c == "?"]
-        group_pos = [i for i, c in enumerate(record) if c == "#"]
-        n_in_group = np.sum(np.asarray(groups))
-        n_group_to_fill = n_in_group - len(group_pos)
 
-        # loop over possible arrangments of "#" in "?" and count those which are valid
-        for temp_group_pos in itertools.combinations(unknown_pos, n_group_to_fill):
-            temp_record = list(record)
-            temp_record = "".join(
-                "#" if i in temp_group_pos else s for i, s in enumerate(temp_record)
-            )
-            temp_record = temp_record.translate({ord("?"): "."})
-            if count_contiguous_group(temp_record, "#") == groups:
-                sum_of_counts_of_arragnements += 1
-print(f"Sum of counts of arrangements: {sum_of_counts_of_arragnements}")
+# data = [s.split(" ") for s in open("test.txt").read().split("\n")]
+# data = [(r, tuple(int(i) for i in g.split(","))) for r, g in data]
+# total = 0
+# for r, g in data:
+#     num_possible = count_possible("?".join([r] * 1) + ".", g * 1)
+#     total += num_possible
+#     if total < 100:
+#         print(num_possible)
+
+
+# print(count_possible("?#####??#?????.?#.." + ".", (9,2,1)))
+
+# p
+
+for rep in [1, 5]:
+    data = [s.split(" ") for s in open("test.txt").read().split("\n")]
+    data = [(r, tuple(int(i) for i in g.split(","))) for r, g in data]
+    counter = 0
+    for i, row in enumerate(data):
+        print(f"{i + 1}/{len(data)}")
+        record, group = row
+        counter += count_possible("?".join([record] * rep) + ".", group * rep)
+    print(counter)
