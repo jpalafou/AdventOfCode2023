@@ -39,11 +39,47 @@ def roll(arr: np.ndarray, direction: str) -> np.ndarray:
     return out
 
 
+def compute_load(arr):
+    out = np.sum(np.sum(arr == 1, axis=1) * np.arange(arr.shape[0], 0, -1))
+    return out
+
+
 int_map = {ord("."): "0", ord("O"): "1", ord("#"): "2"}
 int_rows = [row.translate(int_map) for row in open("inputs.txt").read().split("\n")]
 arr = np.asarray([[int(i) for i in row] for row in int_rows])
 
 # tilt platform to the north and compute total load
-arr = roll(arr, "north")
-total_load = np.sum(np.sum(arr == 1, axis=1) * np.arange(arr.shape[0], 0, -1))
-print(total_load)
+print(compute_load(roll(arr, "north")))
+
+n_steps = 1000000000
+
+# tilt platform in four directions n_steps times and compute total load
+memory_size = 100
+memory = None
+for i in range(n_steps):
+    for direction in ["north", "west", "south", "east"]:
+        arr = roll(arr, direction)
+
+    # check for repeat arrays
+    if memory is not None:
+        repeated_arr = np.all(arr == memory, axis=(1, 2))
+        # print(repeated_arr)
+        if np.any(repeated_arr):
+            period = memory.shape[0] - np.where(repeated_arr)[0][0]
+            print(f"Found cycle with period of {period + 1} steps")
+            periodic_memory = memory[-period:]
+            # print(np.all(arr == periodic_memory, axis=(1,2)))
+            # print(period)
+            # what is our phase are after travelling the remaining steps
+            phase = (n_steps - i) % period - 1
+            arr_after_n_steps = periodic_memory[phase]
+            break
+
+    # update memory
+    if memory is None:
+        memory = arr[np.newaxis]
+    elif memory.shape[0] < memory_size:
+        memory = np.concatenate((memory, arr[np.newaxis]))
+    else:
+        memory = np.concatenate((memory[1:, ...], arr[np.newaxis]))
+print(compute_load(arr_after_n_steps))
